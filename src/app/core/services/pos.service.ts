@@ -44,7 +44,9 @@ export class PosService {
     message: 'Verificando conexión...',
   });
 
-  readonly isConfigured = this.supabaseService.isConfigured;
+  get isConfigured(): boolean {
+    return this.supabaseService.isConfigured;
+  }
 
   readonly cartSubtotal = computed(() =>
     this.cart().reduce((sum, item) => sum + item.subtotal, 0),
@@ -59,7 +61,7 @@ export class PosService {
   );
 
   constructor() {
-    if (isPlatformBrowser(this.platformId) && !this.isConfigured) {
+    if (isPlatformBrowser(this.platformId)) {
       this.products.set(this.readLocalProducts());
     }
   }
@@ -118,6 +120,8 @@ export class PosService {
   }
 
   async loadCategories(): Promise<Category[]> {
+    await this.supabaseService.ensureInitialized();
+
     if (!this.isConfigured) {
       return this.categories();
     }
@@ -139,6 +143,8 @@ export class PosService {
     this.error.set(null);
 
     try {
+      await this.supabaseService.ensureInitialized();
+
       if (!this.isConfigured) {
         if (
           isPlatformBrowser(this.platformId) &&
@@ -173,6 +179,8 @@ export class PosService {
    * Sube una imagen al bucket `product-images` de Supabase Storage o genera Data URL como respaldo
    */
   async uploadProductPhoto(file: File): Promise<string> {
+    await this.supabaseService.ensureInitialized();
+
     if (!this.isConfigured) {
       return this.fileToDataUrl(file);
     }
@@ -201,6 +209,8 @@ export class PosService {
    * Crea un producto convirtiendo el precio de MXN a centavos para persistir en Supabase
    */
   async createProductFromForm(input: CreateProductFormInput): Promise<Product> {
+    await this.supabaseService.ensureInitialized();
+
     const priceInCents = mxnToCents(input.priceMxn);
     let imageUrl: string | null = null;
 
@@ -254,6 +264,8 @@ export class PosService {
     input: CreateProductFormInput,
     currentImageUrl: string | null = null,
   ): Promise<Product> {
+    await this.supabaseService.ensureInitialized();
+
     const priceInCents = mxnToCents(input.priceMxn);
     let imageUrl = currentImageUrl;
 
@@ -305,6 +317,8 @@ export class PosService {
    * Elimina permanentemente un producto cuando el usuario presiona el botón de bote de basura
    */
   async deleteProduct(productId: string): Promise<void> {
+    await this.supabaseService.ensureInitialized();
+
     if (!this.isConfigured) {
       this.products.update((prev) => {
         const next = prev.filter((item) => item.id !== productId);
@@ -330,6 +344,8 @@ export class PosService {
    * Elimina todos los registros de la base de datos (Supabase y almacenamiento local)
    */
   async clearDatabase(): Promise<void> {
+    await this.supabaseService.ensureInitialized();
+
     if (this.isConfigured) {
       const { error: rpcError } = await this.supabaseService.client.rpc(
         'reset_pos_database',
@@ -412,6 +428,8 @@ export class PosService {
     amountReceivedCents: number,
     options?: { discountCents?: number; customerId?: string | null; notes?: string | null },
   ): Promise<Sale> {
+    await this.supabaseService.ensureInitialized();
+
     const items = this.cart();
     if (items.length === 0) {
       throw new Error('El carrito está vacío');

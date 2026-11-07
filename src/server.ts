@@ -1,68 +1,81 @@
+import { AngularAppEngine, createRequestHandler } from '@angular/ssr';
 import {
-  AngularNodeAppEngine,
-  createNodeRequestHandler,
-  isMainModule,
-  writeResponseToNodeResponse,
-} from '@angular/ssr/node';
-import express from 'express';
-import { join } from 'node:path';
+  getAllowedHosts,
+  getContext,
+  getTrustProxyHeaders,
+} from '@netlify/angular-runtime/app-engine.js';
 
-const browserDistFolder = join(import.meta.dirname, '../browser');
-
-const app = express();
-const angularApp = new AngularNodeAppEngine();
-
-/**
- * Example Express Rest API endpoints can be defined here.
- * Uncomment and define endpoints as necessary.
- *
- * Example:
- * ```ts
- * app.get('/api/{*splat}', (req, res) => {
- *   // Handle API request
- * });
- * ```
- */
-
-/**
- * Serve static files from /browser
- */
-app.use(
-  express.static(browserDistFolder, {
-    maxAge: '1y',
-    index: false,
-    redirect: false,
-  }),
-);
-
-/**
- * Handle all other requests by rendering the Angular application.
- */
-app.use((req, res, next) => {
-  angularApp
-    .handle(req)
-    .then((response) =>
-      response ? writeResponseToNodeResponse(response, res) : next(),
-    )
-    .catch(next);
+const angularAppEngine = new AngularAppEngine({
+  allowedHosts: getAllowedHosts(),
+  trustProxyHeaders: getTrustProxyHeaders(),
 });
 
-/**
- * Start the server if this module is the main entry point, or it is ran via PM2.
- * The server listens on the port defined by the `PORT` environment variable, or defaults to 4000.
- */
-if (isMainModule(import.meta.url) || process.env['pm_id']) {
-  const port = process.env['PORT'] || 4000;
-  app.listen(port, (error) => {
-    if (error) {
-      throw error;
-    }
+let dotEnvLoaded = false;
 
-    console.log(`Node Express server listening on http://localhost:${port}`);
-  });
+/**
+ * Obtiene una variable de entorno en tiempo de ejecución desde Netlify Edge, Deno o Node (.env)
+ * sin inyectarla durante el empaquetado.
+ */
+function getRuntimeEnv(key: string): string {
+  if (
+    !dotEnvLoaded &&
+    typeof process !== 'undefined' &&
+    typeof (process as { loadEnvFile?: (path?: string) => void }).loadEnvFile === 'function'
+  ) {
+    dotEnvLoaded = true;
+    try {
+      (process as { loadEnvFile: (path?: string) => void }).loadEnvFile('.env');
+    } catch {
+      // Si no existe archivo .env local, continuar con las variables del sistema
+    }
+  }
+
+  const runtimeGlobal = globalThis as {
+    Netlify?: { env?: { get?: (name: string) => string | undefined } };
+    Deno?: { env?: { get?: (name: string) => string | undefined } };
+    process?: { env?: Record<string, string | undefined> };
+  };
+
+  const value =
+    runtimeGlobal.Netlify?.env?.get?.(key) ??
+    runtimeGlobal.Deno?.env?.get?.(key) ??
+    runtimeGlobal.process?.env?.[key] ??
+    '';
+
+  return value.trim();
+}
+
+export async function netlifyAppEngineHandler(request: Request): Promise<Response> {
+  const context = getContext();
+  const pathname = new URL(request.url).pathname;
+
+  if (pathname === '/api/config') {
+    const rawUrl =
+      getRuntimeEnv('SUPABASE_URL') || getRuntimeEnv('NG_APP_SUPABASE_URL');
+    const supabaseUrl = rawUrl
+      .replace(/\/rest\/v1\/?$/i, '')
+      .replace(/\/+$/, '');
+    const supabaseAnonKey =
+      getRuntimeEnv('SUPABASE_ANON_KEY') || getRuntimeEnv('NG_APP_SUPABASE_ANON_KEY');
+
+    return Response.json(
+      {
+        supabaseUrl,
+        supabaseAnonKey,
+      },
+      {
+        headers: {
+          'Cache-Control': 'no-store, max-age=0',
+        },
+      },
+    );
+  }
+
+  const result = await angularAppEngine.handle(request, context);
+  return result || new Response('Not found', { status: 404 });
 }
 
 /**
- * Request handler used by the Angular CLI (for dev-server and during build) or Firebase Cloud Functions.
+ * Manejador de peticiones utilizado por Angular CLI (dev-server y build) y Netlify.
  */
-export const reqHandler = createNodeRequestHandler(app);
+export const reqHandler = createRequestHandler(netlifyAppEngineHandler);
