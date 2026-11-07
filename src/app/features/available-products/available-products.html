@@ -1,0 +1,286 @@
+<section class="products-container">
+  <div class="table-card">
+    <header class="table-header">
+      <div>
+        <h1>Productos disponibles</h1>
+        <p>Haz clic en cualquier fila para ver los detalles, editar o eliminar el producto.</p>
+      </div>
+    </header>
+
+    <div class="table-responsive">
+      <table class="products-table">
+        <thead>
+          <tr>
+            <th>Nombre</th>
+            <th>Descripción</th>
+            <th class="col-qty">Cantidad disponible</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (product of posService.products(); track product.id) {
+            <tr
+              class="product-row"
+              [class.out-of-stock]="product.stock <= 0"
+              (click)="openProductModal(product)"
+            >
+              <td class="cell-name">{{ product.name }}</td>
+              <td class="cell-desc">{{ product.description || 'Sin descripción' }}</td>
+              <td class="cell-qty">
+                <span class="qty-value">{{ product.stock }}</span>
+                @if (product.stock <= 0) {
+                  <span class="badge-depleted">Agotado</span>
+                }
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="empty-row">
+                No hay productos registrados todavía.
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  @if (selectedProduct(); as product) {
+    <div class="modal-backdrop" (click)="closeModal()">
+      <div
+        class="modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-product-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="modal-top-bar">
+          <h2 id="modal-product-title">
+            {{ isEditing() ? 'Editar producto' : 'Detalle del producto' }}
+          </h2>
+
+          <div class="modal-top-actions">
+            <!-- Bote de basura para eliminar -->
+            <button
+              type="button"
+              class="icon-btn btn-delete"
+              aria-label="Eliminar producto"
+              title="Eliminar producto"
+              [disabled]="actionBusy()"
+              (click)="deleteSelectedProduct()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                <line x1="10" x2="10" y1="11" y2="17" />
+                <line x1="14" x2="14" y1="11" y2="17" />
+              </svg>
+            </button>
+
+            <!-- Lápiz para editar -->
+            <button
+              type="button"
+              class="icon-btn btn-edit"
+              [class.active]="isEditing()"
+              aria-label="Editar producto"
+              title="Editar producto"
+              [disabled]="actionBusy()"
+              (click)="toggleEditMode()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+                <path d="m15 5 4 4" />
+              </svg>
+            </button>
+
+            <!-- Equis para cerrar -->
+            <button
+              type="button"
+              class="icon-btn btn-close"
+              aria-label="Cerrar"
+              title="Cerrar"
+              [disabled]="actionBusy()"
+              (click)="closeModal()"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M18 6 6 18" />
+                <path d="m6 6 12 12" />
+              </svg>
+            </button>
+          </div>
+        </header>
+
+        @if (modalMessage(); as msg) {
+          <div
+            class="modal-alert"
+            [class.alert-success]="msg.type === 'success'"
+            [class.alert-error]="msg.type === 'error'"
+          >
+            {{ msg.text }}
+          </div>
+        }
+
+        <div class="modal-body">
+          @if (!isEditing()) {
+            <div class="product-detail-view">
+              @if (product.image_url) {
+                <div class="detail-image">
+                  <img [src]="product.image_url" [alt]="product.name" />
+                </div>
+              }
+
+              <dl class="detail-list">
+                <div class="detail-item">
+                  <dt>Nombre del producto</dt>
+                  <dd>{{ product.name }}</dd>
+                </div>
+
+                <div class="detail-item">
+                  <dt>Descripción breve</dt>
+                  <dd>{{ product.description || 'Sin descripción' }}</dd>
+                </div>
+
+                <div class="detail-row">
+                  <div class="detail-item">
+                    <dt>Cantidad disponible</dt>
+                    <dd>
+                      {{ product.stock }}
+                      @if (product.stock <= 0) {
+                        <span class="badge-depleted">Agotado</span>
+                      }
+                    </dd>
+                  </div>
+
+                  <div class="detail-item">
+                    <dt>Precio</dt>
+                    <dd>
+                      <strong>{{ formatPriceMxn(product.price) | currency: 'MXN' }}</strong>
+                    </dd>
+                  </div>
+                </div>
+              </dl>
+            </div>
+          } @else {
+            <form class="edit-form" (ngSubmit)="saveProductChanges()" novalidate>
+              <div class="form-group">
+                <label for="edit-product-name">Nombre del producto</label>
+                <input
+                  id="edit-product-name"
+                  name="editName"
+                  type="text"
+                  [ngModel]="editName()"
+                  (ngModelChange)="editName.set($event)"
+                  required
+                />
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="edit-product-quantity">Cantidad</label>
+                  <input
+                    id="edit-product-quantity"
+                    name="editQuantity"
+                    type="number"
+                    min="0"
+                    step="1"
+                    [ngModel]="editQuantity()"
+                    (ngModelChange)="editQuantity.set($event)"
+                    required
+                  />
+                </div>
+
+                <div class="form-group">
+                  <label for="edit-product-price">Precio (MXN)</label>
+                  <input
+                    id="edit-product-price"
+                    name="editPriceMxn"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    [ngModel]="editPriceMxn()"
+                    (ngModelChange)="editPriceMxn.set($event)"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-product-description">Descripción breve</label>
+                <textarea
+                  id="edit-product-description"
+                  name="editDescription"
+                  rows="3"
+                  [ngModel]="editDescription()"
+                  (ngModelChange)="editDescription.set($event)"
+                ></textarea>
+              </div>
+
+              <div class="form-group">
+                <label for="edit-product-photo">Foto</label>
+                <input
+                  id="edit-product-photo"
+                  name="editPhoto"
+                  type="file"
+                  accept="image/*"
+                  (change)="onEditPhotoSelected($event)"
+                />
+                @if (editPhotoPreview(); as preview) {
+                  <div class="detail-image preview-small">
+                    <img [src]="preview" alt="Vista previa" />
+                  </div>
+                }
+              </div>
+
+              <div class="edit-actions">
+                <button type="submit" class="btn-save" [disabled]="actionBusy()">
+                  {{ actionBusy() ? 'Guardando...' : 'Guardar cambios' }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-cancel"
+                  [disabled]="actionBusy()"
+                  (click)="toggleEditMode()"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</section>

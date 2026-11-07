@@ -1,0 +1,82 @@
+<section class="settings-center-page">
+  <div class="center-box">
+    @if (feedbackMessage(); as msg) {
+      <div
+        class="feedback-banner"
+        [class.success]="msg.type === 'success'"
+        [class.error]="msg.type === 'error'"
+        role="status"
+      >
+        {{ msg.text }}
+      </div>
+    }
+
+    <button
+      type="button"
+      class="btn-delete-db"
+      (click)="openConfirmModal()"
+    >
+      Eliminar base de datos
+    </button>
+  </div>
+
+  @if (showConfirmModal()) {
+    <div class="modal-backdrop" (click)="closeConfirmModal()">
+      <div
+        class="modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="confirm-delete-db-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="modal-header">
+          <h2 id="confirm-delete-db-title">Confirmar eliminación</h2>
+          <button
+            type="button"
+            class="btn-close-x"
+            aria-label="Cerrar"
+            [disabled]="deleting()"
+            (click)="closeConfirmModal()"
+          >
+            &times;
+          </button>
+        </header>
+
+        <form class="modal-body" (ngSubmit)="confirmDeleteDatabase()" novalidate>
+          <p class="confirm-instructions">
+            Esta acción eliminará todos los registros de la base de datos. Para confirmar, escribe
+            <strong>converse</strong> a continuación:
+          </p>
+
+          <input
+            id="confirm-converse-input"
+            name="confirmText"
+            type="text"
+            autocomplete="off"
+            placeholder="Escribe converse"
+            [ngModel]="confirmText()"
+            (ngModelChange)="confirmText.set($event)"
+          />
+
+          <div class="modal-actions">
+            <button
+              type="submit"
+              class="btn-confirm-danger"
+              [disabled]="!isConfirmValid() || deleting()"
+            >
+              {{ deleting() ? 'Eliminando...' : 'Confirmar' }}
+            </button>
+            <button
+              type="button"
+              class="btn-cancel"
+              [disabled]="deleting()"
+              (click)="closeConfirmModal()"
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  }
+</section>
