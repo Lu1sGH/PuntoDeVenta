@@ -27,8 +27,17 @@ function loadDotEnv() {
 
 loadDotEnv();
 
-const supabaseUrl = process.env['SUPABASE_URL'] || process.env['NG_APP_SUPABASE_URL'];
-const supabaseAnonKey = process.env['SUPABASE_ANON_KEY'] || process.env['NG_APP_SUPABASE_ANON_KEY'];
+const rawSupabaseUrl =
+  process.env['SUPABASE_URL'] || process.env['NG_APP_SUPABASE_URL'] || '';
+const supabaseUrl = rawSupabaseUrl
+  .trim()
+  .replace(/\/rest\/v1\/?$/i, '')
+  .replace(/\/+$/, '');
+const supabaseAnonKey = (
+  process.env['SUPABASE_ANON_KEY'] ||
+  process.env['NG_APP_SUPABASE_ANON_KEY'] ||
+  ''
+).trim();
 
 if (supabaseUrl && supabaseAnonKey) {
   const envDir = resolve(process.cwd(), 'src/environments');

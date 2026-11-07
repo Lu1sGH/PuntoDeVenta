@@ -17,7 +17,9 @@ export class SupabaseService {
 
   constructor() {
     const isBrowser = isPlatformBrowser(this.platformId);
-    const rawUrl = environment.supabaseUrl?.trim() ?? '';
+    const rawUrl = (environment.supabaseUrl?.trim() ?? '')
+      .replace(/\/rest\/v1\/?$/i, '')
+      .replace(/\/+$/, '');
     const rawKey = environment.supabaseAnonKey?.trim() ?? '';
 
     this.isConfigured =
