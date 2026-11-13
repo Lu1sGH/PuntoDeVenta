@@ -1,74 +1,267 @@
-<header class="navbar-header">
-  <nav class="navbar" aria-label="Navegación principal">
-    <ul class="nav-links">
-      <li>
-        <button
-          type="button"
-          class="nav-item"
-          [class.active]="activeOption() === 'productos'"
-          (click)="selectOption('productos')"
-        >
-          Productos disponibles
-        </button>
-      </li>
-      <li>
-        <button
-          type="button"
-          class="nav-item"
-          [class.active]="activeOption() === 'agregar'"
-          (click)="selectOption('agregar')"
-        >
-          Agregar productos
-        </button>
-      </li>
-      <li>
-        <button
-          type="button"
-          class="nav-item"
-          [class.active]="activeOption() === 'venta'"
-          (click)="selectOption('venta')"
-        >
-          Realizar venta
-        </button>
-      </li>
-    </ul>
+<div class="relative min-h-dvh flex flex-col bg-slate-100 text-slate-900">
+  <!-- Fondo ambiental con formas orgánicas/abstractas muy tenues que simulan naturaleza -->
+  <div class="nature-bg-layer fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+    <!-- Destellos orgánicos difuminados -->
+    <div class="nature-orb nature-orb-top-left"></div>
+    <div class="nature-orb nature-orb-bottom-right"></div>
+    <div class="nature-orb nature-orb-center"></div>
 
-    <button
-      type="button"
-      class="nav-settings-btn"
-      [class.active]="activeOption() === 'configuraciones'"
-      (click)="selectOption('configuraciones')"
-      aria-label="Configuraciones"
-      title="Configuraciones"
+    <!-- Silueta abstracta de hoja/rama superior izquierda -->
+    <svg
+      class="nature-leaf-svg nature-leaf-tl"
+      viewBox="0 0 600 600"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
     >
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
+      <path
+        d="M-40 80 C 160 20, 380 120, 460 320 C 310 350, 120 260, -40 80 Z"
+        fill="url(#leafGrad1)"
+      />
+      <path
+        d="M-30 85 C 140 150, 290 220, 445 315"
+        stroke="rgba(22, 163, 74, 0.08)"
+        stroke-width="3"
         stroke-linecap="round"
-        stroke-linejoin="round"
-        aria-hidden="true"
-      >
-        <path
-          d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
-        />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-    </button>
-  </nav>
-</header>
+      />
+      <path
+        d="M40 240 C 190 210, 340 290, 390 450 C 260 460, 130 370, 40 240 Z"
+        fill="url(#leafGrad2)"
+      />
+      <defs>
+        <linearGradient id="leafGrad1" x1="0" y1="0" x2="460" y2="320" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#16a34a" stop-opacity="0.065" />
+          <stop offset="100%" stop-color="#10b981" stop-opacity="0.015" />
+        </linearGradient>
+        <linearGradient id="leafGrad2" x1="40" y1="240" x2="390" y2="450" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#22c55e" stop-opacity="0.05" />
+          <stop offset="100%" stop-color="#059669" stop-opacity="0.01" />
+        </linearGradient>
+      </defs>
+    </svg>
 
-<main class="main-content">
-  @if (activeOption() === 'productos') {
-    <app-available-products />
-  } @else if (activeOption() === 'agregar') {
-    <app-add-product />
-  } @else if (activeOption() === 'configuraciones') {
-    <app-settings />
-  }
-  <router-outlet />
-</main>
+    <!-- Siluetas orgánicas abstractas inferior derecha -->
+    <svg
+      class="nature-leaf-svg nature-leaf-br"
+      viewBox="0 0 700 700"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M720 620 C 480 650, 260 510, 190 280 C 370 250, 580 390, 720 620 Z"
+        fill="url(#leafGrad3)"
+      />
+      <path
+        d="M700 610 C 510 490, 350 390, 200 285"
+        stroke="rgba(16, 185, 129, 0.075)"
+        stroke-width="3"
+        stroke-linecap="round"
+      />
+      <path
+        d="M680 390 C 520 420, 380 340, 330 170 C 470 150, 610 240, 680 390 Z"
+        fill="url(#leafGrad4)"
+      />
+      <defs>
+        <linearGradient id="leafGrad3" x1="720" y1="620" x2="190" y2="280" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#15803d" stop-opacity="0.065" />
+          <stop offset="100%" stop-color="#34d399" stop-opacity="0.015" />
+        </linearGradient>
+        <linearGradient id="leafGrad4" x1="680" y1="390" x2="330" y2="170" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#10b981" stop-opacity="0.05" />
+          <stop offset="100%" stop-color="#22c55e" stop-opacity="0.01" />
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+
+  <header class="navbar-glass-navy sticky top-0 z-40">
+    <nav
+      class="w-full px-4 sm:px-6 h-14 sm:h-15 flex items-center justify-between gap-4"
+      aria-label="Navegación principal"
+    >
+      <!-- Botón Hamburger (visible en pantallas móviles) -->
+      <button
+        type="button"
+        class="hamburger-btn md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg bg-transparent border-0 text-white/85 hover:text-white transition-colors cursor-pointer"
+        [attr.aria-expanded]="mobileMenuOpen()"
+        aria-controls="mobile-nav-menu"
+        aria-label="Menú de navegación"
+        (click)="toggleMobileMenu()"
+      >
+        @if (!mobileMenuOpen()) {
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        } @else {
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="24"
+            height="24"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        }
+      </button>
+
+      <!-- Opciones de navegación en escritorio (alineadas a la izquierda) -->
+      <ul
+        class="hidden md:flex items-center justify-start gap-8 list-none m-0 p-0"
+      >
+        <li class="flex items-center shrink-0">
+          <button
+            type="button"
+            class="nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+            [class.active]="activeOption() === 'productos'"
+            (click)="selectOption('productos')"
+          >
+            Inventario
+          </button>
+        </li>
+        <li class="flex items-center shrink-0">
+          <button
+            type="button"
+            class="nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+            [class.active]="activeOption() === 'agregar'"
+            (click)="selectOption('agregar')"
+          >
+            Agregar productos
+          </button>
+        </li>
+        <li class="flex items-center shrink-0">
+          <button
+            type="button"
+            class="nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+            [class.active]="activeOption() === 'venta'"
+            (click)="selectOption('venta')"
+          >
+            Realizar venta
+          </button>
+        </li>
+        <li class="flex items-center shrink-0">
+          <button
+            type="button"
+            class="nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+            [class.active]="activeOption() === 'historial'"
+            (click)="selectOption('historial')"
+          >
+            Historial de ventas
+          </button>
+        </li>
+      </ul>
+
+      <!-- Botón de configuraciones (derecha) -->
+      <button
+        type="button"
+        class="nav-settings-btn ml-auto shrink-0 inline-flex items-center justify-center w-9 h-9 rounded-full bg-transparent border-0 transition-colors duration-200 cursor-pointer"
+        [class.active]="activeOption() === 'configuraciones'"
+        (click)="selectOption('configuraciones')"
+        aria-label="Configuraciones"
+        title="Configuraciones"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path
+            d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"
+          />
+          <circle cx="12" cy="12" r="3" />
+        </svg>
+      </button>
+    </nav>
+
+    <!-- Menú desplegable Hamburger (vista responsiva móvil) -->
+    @if (mobileMenuOpen()) {
+      <div
+        id="mobile-nav-menu"
+        class="mobile-nav-panel md:hidden px-5 pt-2 pb-4 border-t border-white/15"
+      >
+        <ul class="flex flex-col items-start gap-3 list-none m-0 p-0">
+          <li>
+            <button
+              type="button"
+              class="nav-item mobile-nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+              [class.active]="activeOption() === 'productos'"
+              (click)="selectOption('productos')"
+            >
+              Inventario
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="nav-item mobile-nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+              [class.active]="activeOption() === 'agregar'"
+              (click)="selectOption('agregar')"
+            >
+              Agregar productos
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="nav-item mobile-nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+              [class.active]="activeOption() === 'venta'"
+              (click)="selectOption('venta')"
+            >
+              Realizar venta
+            </button>
+          </li>
+          <li>
+            <button
+              type="button"
+              class="nav-item mobile-nav-item relative inline-flex items-center bg-transparent border-0 px-0 py-1 text-base font-medium transition-colors duration-200 cursor-pointer"
+              [class.active]="activeOption() === 'historial'"
+              (click)="selectOption('historial')"
+            >
+              Historial de ventas
+            </button>
+          </li>
+        </ul>
+      </div>
+    }
+  </header>
+
+  <main class="relative z-10 flex-1 w-full">
+    @if (activeOption() === 'productos') {
+      <app-available-products />
+    } @else if (activeOption() === 'agregar') {
+      <app-add-product />
+    } @else if (activeOption() === 'venta') {
+      <app-make-sale />
+    } @else if (activeOption() === 'historial') {
+      <app-sales-history />
+    } @else if (activeOption() === 'configuraciones') {
+      <app-settings />
+    }
+    <router-outlet />
+  </main>
+</div>

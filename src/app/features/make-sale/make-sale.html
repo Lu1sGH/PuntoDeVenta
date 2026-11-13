@@ -1,0 +1,387 @@
+<section class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+  <div class="bg-white border border-slate-200 rounded-2xl p-5 sm:p-7 shadow-xs flex flex-col gap-6">
+    <header>
+      <h1 class="text-xl sm:text-2xl font-bold text-slate-900 m-0">Realizar venta</h1>
+      <p class="text-sm text-slate-500 m-0 mt-1">
+        Busca productos para agregarlos al carrito de compra.
+      </p>
+    </header>
+
+    @if (statusMessage(); as msg) {
+      <div
+        class="px-4 py-3 rounded-xl text-sm font-medium border"
+        [class.bg-green-50]="msg.type === 'success'"
+        [class.text-green-800]="msg.type === 'success'"
+        [class.border-green-200]="msg.type === 'success'"
+        [class.bg-red-50]="msg.type === 'error'"
+        [class.text-red-800]="msg.type === 'error'"
+        [class.border-red-200]="msg.type === 'error'"
+        role="status"
+      >
+        {{ msg.text }}
+      </div>
+    }
+
+    <!-- Barra de búsqueda -->
+    <div class="flex flex-col gap-2">
+      <label for="sale-search-input" class="text-sm font-semibold text-slate-800">
+        Buscar producto
+      </label>
+      <input
+        id="sale-search-input"
+        name="searchQuery"
+        type="search"
+        class="w-full px-4 py-2.5 border border-slate-300 rounded-xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        placeholder="Escribe el nombre o descripción del producto..."
+        autocomplete="off"
+        [ngModel]="searchQuery()"
+        (ngModelChange)="searchQuery.set($event)"
+      />
+
+      @if (searchQuery().trim().length > 0) {
+        <div
+          class="border border-slate-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto bg-white divide-y divide-slate-100 shadow-xs"
+          role="region"
+          aria-label="Resultados de búsqueda"
+        >
+          @for (product of searchResults(); track product.id) {
+            <div
+              class="search-result-item flex items-center justify-between gap-3 px-4 py-3 transition-colors"
+              [class.out-of-stock]="isOutOfStock(product)"
+            >
+              <div class="flex items-center gap-3 min-w-0">
+                <div class="product-thumb w-12 h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
+                  @if (product.image_url) {
+                    <img
+                      [src]="product.image_url"
+                      [alt]="product.name"
+                      class="w-full h-full object-cover block"
+                    />
+                  } @else {
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      class="w-5 h-5 text-slate-400"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="1.75"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                      <circle cx="9" cy="9" r="2" />
+                      <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                    </svg>
+                  }
+                </div>
+
+                <div class="flex flex-col min-w-0">
+                  <span class="font-semibold text-sm sm:text-base truncate">
+                    {{ product.name }}
+                  </span>
+                  <span class="text-xs sm:text-sm opacity-80">
+                    {{ formatPriceMxn(product.price) | currency: 'MXN' }}
+                    &middot;
+                    Disponible: {{ remainingStock(product) }}
+                  </span>
+                </div>
+              </div>
+
+              <div class="shrink-0">
+                @if (isOutOfStock(product)) {
+                  <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold bg-red-600 text-white">
+                    Agotado
+                  </span>
+                } @else {
+                  <button
+                    type="button"
+                    class="btn-add-plus w-9 h-9 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold inline-flex items-center justify-center transition-colors cursor-pointer"
+                    [attr.aria-label]="'Agregar ' + product.name"
+                    title="Agregar al carrito"
+                    (click)="addProductToCart(product)"
+                  >
+                    +
+                  </button>
+                }
+              </div>
+            </div>
+          } @empty {
+            <p class="m-0 py-6 px-4 text-center text-sm text-slate-500">
+              No se encontraron productos que coincidan con la búsqueda.
+            </p>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Tabla del carrito de compras -->
+    <div class="border border-slate-200 rounded-xl overflow-x-auto">
+      <table class="w-full border-collapse text-left">
+        <thead>
+          <tr class="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            <th class="py-3.5 px-4 sm:px-5">Nombre</th>
+            <th class="py-3.5 px-4">Precio</th>
+            <th class="py-3.5 px-4 sm:px-5 text-right w-44">Cantidad</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100 text-sm sm:text-base">
+          @for (item of posService.cart(); track item.product.id) {
+            <tr class="cart-item-row">
+              <td class="py-3.5 px-4 sm:px-5 align-middle">
+                <div class="flex items-center gap-3">
+                  <div class="product-thumb w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
+                    @if (item.product.image_url) {
+                      <img
+                        [src]="item.product.image_url"
+                        [alt]="item.product.name"
+                        class="w-full h-full object-cover block"
+                      />
+                    } @else {
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-5 h-5 text-slate-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                        <circle cx="9" cy="9" r="2" />
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                      </svg>
+                    }
+                  </div>
+                  <span class="font-semibold text-slate-900">{{ item.product.name }}</span>
+                </div>
+              </td>
+              <td class="py-3.5 px-4 align-middle whitespace-nowrap text-slate-700 font-medium">
+                {{ formatPriceMxn(item.product.price) | currency: 'MXN' }}
+              </td>
+              <td class="py-3.5 px-4 sm:px-5 align-middle text-right">
+                <div class="inline-flex items-center justify-end gap-2">
+                  <input
+                    type="number"
+                    class="qty-input w-16 sm:w-20 px-2 py-1.5 border border-slate-300 rounded-lg text-center text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="1"
+                    [max]="item.product.stock"
+                    step="1"
+                    [attr.aria-label]="'Cantidad de ' + item.product.name"
+                    [ngModel]="item.quantity"
+                    (ngModelChange)="onQuantityChange(item.product.id, $event)"
+                  />
+                  <button
+                    type="button"
+                    class="btn-remove-item inline-flex items-center justify-center w-8 h-8 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-600 transition-colors cursor-pointer"
+                    [attr.aria-label]="'Quitar ' + item.product.name + ' de la lista'"
+                    title="Borrar producto de la lista"
+                    (click)="removeItem(item.product.id)"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      stroke-linecap="round"
+                      stroke-linejoin="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M3 6h18" />
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="3" class="py-10 px-4 text-center text-sm text-slate-500">
+                El carrito está vacío. Usa la barra de búsqueda para agregar productos.
+              </td>
+            </tr>
+          }
+        </tbody>
+        <tfoot>
+          <tr class="bg-slate-50 border-t-2 border-slate-200 text-base sm:text-lg font-bold">
+            <td colspan="2" class="py-3.5 px-4 sm:px-5 text-right text-slate-700">Total</td>
+            <td class="py-3.5 px-4 sm:px-5 text-right text-slate-900 whitespace-nowrap">
+              {{ formatPriceMxn(posService.cartTotal()) | currency: 'MXN' }}
+            </td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- Botones al fondo de la página -->
+    <div class="flex flex-col sm:flex-row justify-end gap-3">
+      <button
+        type="button"
+        class="btn-complete-sale px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-sm sm:text-base font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        [disabled]="posService.cart().length === 0"
+        (click)="openTicketModal()"
+      >
+        Completar venta
+      </button>
+      <button
+        type="button"
+        class="btn-cancel-sale px-5 py-2.5 rounded-xl bg-slate-100 hover:bg-red-50 hover:text-red-700 hover:border-red-200 text-slate-700 border border-slate-300 text-sm sm:text-base font-semibold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+        [disabled]="posService.cart().length === 0"
+        (click)="cancelSale()"
+      >
+        Cancelar
+      </button>
+    </div>
+  </div>
+
+  <!-- Pop up de Ticket de Compra -->
+  @if (showTicketModal()) {
+    <div
+      class="fixed inset-0 z-50 bg-slate-900/55 backdrop-blur-xs flex items-center justify-center p-4"
+      (click)="closeTicketModal()"
+    >
+      <div
+        class="ticket-dialog bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90dvh]"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ticket-modal-title"
+        (click)="$event.stopPropagation()"
+      >
+        <header class="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50">
+          <h2 id="ticket-modal-title" class="text-base sm:text-lg font-bold text-slate-900 m-0">
+            Ticket de compra
+          </h2>
+          <button
+            type="button"
+            class="btn-close-ticket inline-flex items-center justify-center w-8 h-8 rounded-lg border border-slate-300 bg-white hover:bg-slate-100 text-slate-700 text-xl leading-none cursor-pointer disabled:opacity-50"
+            aria-label="Cerrar"
+            title="Cerrar"
+            [disabled]="processingSale()"
+            (click)="closeTicketModal()"
+          >
+            &times;
+          </button>
+        </header>
+
+        <div class="p-5 overflow-y-auto flex flex-col gap-4">
+          <p class="m-0 text-xs sm:text-sm text-slate-600 pb-3 border-b border-dashed border-slate-300">
+            Fecha y hora: <strong>{{ ticketDate() | date: 'dd/MM/yyyy HH:mm:ss' }}</strong>
+          </p>
+
+          <div class="flex flex-col gap-3">
+            @for (item of posService.cart(); track item.product.id) {
+              <div class="ticket-line flex items-center justify-between gap-3 text-sm">
+                <div class="flex items-center gap-2.5 min-w-0">
+                  <div class="w-10 h-10 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex items-center justify-center shrink-0">
+                    @if (item.product.image_url) {
+                      <img
+                        [src]="item.product.image_url"
+                        [alt]="item.product.name"
+                        class="w-full h-full object-cover block"
+                      />
+                    } @else {
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        class="w-4 h-4 text-slate-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="1.75"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        aria-hidden="true"
+                      >
+                        <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                        <circle cx="9" cy="9" r="2" />
+                        <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+                      </svg>
+                    }
+                  </div>
+                  <div class="flex flex-col min-w-0">
+                    <span class="font-semibold text-slate-900 truncate">{{ item.product.name }}</span>
+                    <small class="text-slate-500 text-xs">
+                      {{ item.quantity }} x {{ formatPriceMxn(item.product.price) | currency: 'MXN' }}
+                    </small>
+                  </div>
+                </div>
+                <strong class="text-slate-900 whitespace-nowrap">
+                  {{ formatPriceMxn(item.subtotal) | currency: 'MXN' }}
+                </strong>
+              </div>
+            }
+          </div>
+
+          <div class="flex items-center justify-between pt-3.5 border-t-2 border-slate-900 text-base sm:text-lg">
+            <span class="font-semibold text-slate-800">Total a pagar</span>
+            <strong class="text-slate-900">
+              {{ formatPriceMxn(posService.cartTotal()) | currency: 'MXN' }}
+            </strong>
+          </div>
+
+          <!-- Pago y cálculo automático de cambio -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 flex flex-col gap-3">
+            <div>
+              <label for="ticket-amount-received" class="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
+                Monto recibido (MXN)
+              </label>
+              <div class="relative flex items-center">
+                <span class="absolute left-3.5 text-slate-500 font-semibold pointer-events-none">$</span>
+                <input
+                  #amountInput
+                  id="ticket-amount-received"
+                  name="amountReceivedMxn"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  class="w-full pl-8 pr-14 py-2 bg-white border border-slate-300 rounded-lg text-sm sm:text-base font-semibold text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  [ngModel]="amountReceivedMxn()"
+                  (keydown)="preventNegativeKey($event)"
+                  (ngModelChange)="onAmountReceivedChange($event, amountInput)"
+                />
+                <span class="absolute right-3.5 text-xs font-semibold text-slate-500 pointer-events-none">
+                  MXN
+                </span>
+              </div>
+            </div>
+
+            @if (hasEnteredAmount() && !isPaymentSufficient()) {
+              <p class="m-0 text-xs font-semibold text-red-600" role="alert">
+                El monto recibido no puede ser menor al total a pagar (faltan
+                {{ formatPriceMxn(missingAmountCents()) | currency: 'MXN' }}).
+              </p>
+            }
+
+            <div class="flex items-center justify-between pt-2 border-t border-slate-200 text-sm sm:text-base">
+              <span class="font-semibold text-slate-700">Cambio</span>
+              <strong
+                class="ticket-change-amount text-base sm:text-lg font-extrabold"
+                [class.text-emerald-600]="isPaymentSufficient()"
+                [class.text-slate-400]="!isPaymentSufficient()"
+              >
+                {{ formatPriceMxn(changeCents()) | currency: 'MXN' }}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <footer class="px-5 py-4 border-t border-slate-200 bg-slate-50">
+          <button
+            type="button"
+            class="btn-finalize-purchase w-full py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base font-bold transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+            [disabled]="processingSale() || !isPaymentSufficient()"
+            (click)="finalizePurchase()"
+          >
+            {{ processingSale() ? 'Procesando...' : 'Finalizar compra' }}
+          </button>
+        </footer>
+      </div>
+    </div>
+  }
+</section>

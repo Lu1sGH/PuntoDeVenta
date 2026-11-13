@@ -8,11 +8,17 @@ import {
   PaymentMethod,
   Product,
   Sale,
+  SaleItem,
   mxnToCents,
 } from '../models/pos.models';
 import { SupabaseService } from './supabase.service';
 
 const LOCAL_PRODUCTS_KEY = 'pdv_local_products';
+const LOCAL_SALES_KEY = 'pdv_local_sales';
+
+export interface StoredSaleWithItems extends Sale {
+  items: SaleItem[];
+}
 
 export function extractErrorMessage(err: unknown, fallback: string): string {
   if (err instanceof Error && err.message) {
@@ -37,6 +43,7 @@ export class PosService {
   readonly categories = signal<Category[]>([]);
   readonly products = signal<Product[]>([]);
   readonly cart = signal<CartItem[]>([]);
+  readonly sales = signal<StoredSaleWithItems[]>([]);
   readonly loading = signal<boolean>(false);
   readonly error = signal<string | null>(null);
   readonly connectionStatus = signal<{ ok: boolean; message: string }>({
@@ -52,9 +59,9 @@ export class PosService {
     this.cart().reduce((sum, item) => sum + item.subtotal, 0),
   );
 
-  readonly cartTax = computed(() => Math.round(this.cartSubtotal() * 0.16));
+  readonly cartTax = computed(() => 0);
 
-  readonly cartTotal = computed(() => this.cartSubtotal() + this.cartTax());
+  readonly cartTotal = computed(() => this.cartSubtotal());
 
   readonly cartItemCount = computed(() =>
     this.cart().reduce((count, item) => count + item.quantity, 0),
@@ -63,6 +70,7 @@ export class PosService {
   constructor() {
     if (isPlatformBrowser(this.platformId)) {
       this.products.set(this.readLocalProducts());
+      this.sales.set(this.readLocalSales());
     }
   }
 
@@ -80,6 +88,25 @@ export class PosService {
     if (!isPlatformBrowser(this.platformId)) return;
     try {
       localStorage.setItem(LOCAL_PRODUCTS_KEY, JSON.stringify(items));
+    } catch {
+      // Ignorar errores de cuota de almacenamiento local
+    }
+  }
+
+  private readLocalSales(): StoredSaleWithItems[] {
+    if (!isPlatformBrowser(this.platformId)) return [];
+    try {
+      const raw = localStorage.getItem(LOCAL_SALES_KEY);
+      return raw ? (JSON.parse(raw) as StoredSaleWithItems[]) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  private writeLocalSales(items: StoredSaleWithItems[]): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    try {
+      localStorage.setItem(LOCAL_SALES_KEY, JSON.stringify(items));
     } catch {
       // Ignorar errores de cuota de almacenamiento local
     }
@@ -106,9 +133,10 @@ export class PosService {
       this.connectionStatus.set(status);
 
       if (status.ok) {
-        await Promise.all([this.loadCategories(), this.loadProducts()]);
+        await Promise.all([this.loadCategories(), this.loadProducts(), this.loadSales()]);
       } else {
         this.products.set(this.readLocalProducts());
+        this.sales.set(this.readLocalSales());
       }
     } catch (err) {
       const message = extractErrorMessage(err, 'Error inesperado al conectar');
@@ -168,6 +196,51 @@ export class PosService {
       return rows;
     } catch (err) {
       const message = extractErrorMessage(err, 'Error al cargar productos');
+      this.error.set(message);
+      throw err;
+    } finally {
+      this.loading.set(false);
+    }
+  }
+
+  /**
+   * Carga el historial completo de ventas junto con el detalle de cada artículo vendido
+   */
+  async loadSales(): Promise<StoredSaleWithItems[]> {
+    this.loading.set(true);
+    this.error.set(null);
+
+    try {
+      await this.supabaseService.ensureInitialized();
+
+      if (!this.isConfigured) {
+        if (
+          isPlatformBrowser(this.platformId) &&
+          localStorage.getItem(LOCAL_SALES_KEY) !== null
+        ) {
+          const local = this.readLocalSales();
+          this.sales.set(local);
+          return local;
+        }
+        return this.sales();
+      }
+
+      const { data, error } = await this.supabaseService.client
+        .from('sales')
+        .select('*, sale_items(*)')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const rows = ((data ?? []) as Array<Sale & { sale_items?: SaleItem[] }>).map((row) => ({
+        ...row,
+        items: Array.isArray(row.sale_items) ? row.sale_items : [],
+      }));
+
+      this.sales.set(rows);
+      return rows;
+    } catch (err) {
+      const message = extractErrorMessage(err, 'Error al cargar el historial de ventas');
       this.error.set(message);
       throw err;
     } finally {
@@ -378,14 +451,42 @@ export class PosService {
 
     if (isPlatformBrowser(this.platformId)) {
       localStorage.removeItem(LOCAL_PRODUCTS_KEY);
+      localStorage.removeItem(LOCAL_SALES_KEY);
     }
 
     this.products.set([]);
     this.categories.set([]);
     this.cart.set([]);
+    this.sales.set([]);
   }
 
-  addToCart(product: Product, quantity = 1): void {
+  /**
+   * Obtiene la cantidad de un producto que ya está agregada en el carrito
+   */
+  getCartQuantity(productId: string): number {
+    return this.cart().find((item) => item.product.id === productId)?.quantity ?? 0;
+  }
+
+  /**
+   * Verifica si aún hay existencia disponible para agregar más unidades de este producto al carrito
+   */
+  canAddToCart(product: Product): boolean {
+    return product.stock > 0 && this.getCartQuantity(product.id) < product.stock;
+  }
+
+  /**
+   * Agrega un producto al carrito verificando que exista stock disponible
+   */
+  addToCart(product: Product, quantity = 1): boolean {
+    if (quantity <= 0 || product.stock <= 0) {
+      return false;
+    }
+
+    const currentQty = this.getCartQuantity(product.id);
+    if (currentQty + quantity > product.stock) {
+      return false;
+    }
+
     this.cart.update((items) => {
       const existingIndex = items.findIndex((i) => i.product.id === product.id);
       if (existingIndex > -1) {
@@ -394,13 +495,13 @@ export class PosService {
           const nextQty = Math.min(item.quantity + quantity, product.stock);
           return {
             ...item,
+            product,
             quantity: nextQty,
             subtotal: nextQty * product.price,
           };
         });
       }
 
-      if (product.stock < quantity) return items;
       return [
         ...items,
         {
@@ -410,6 +511,36 @@ export class PosService {
         },
       ];
     });
+
+    return true;
+  }
+
+  /**
+   * Actualiza la cantidad de un producto en el carrito mediante el campo numérico,
+   * respetando el límite de existencia disponible (1 .. stock)
+   */
+  updateCartItemQuantity(productId: string, newQuantity: number): void {
+    const parsed = Math.trunc(Number(newQuantity));
+    if (Number.isNaN(parsed) || parsed < 1) {
+      this.updateCartItemClamp(productId, 1);
+      return;
+    }
+    this.updateCartItemClamp(productId, parsed);
+  }
+
+  private updateCartItemClamp(productId: string, requestedQty: number): void {
+    this.cart.update((items) =>
+      items.map((item) => {
+        if (item.product.id !== productId) return item;
+        const maxStock = Math.max(1, item.product.stock);
+        const clampedQty = Math.min(Math.max(1, requestedQty), maxStock);
+        return {
+          ...item,
+          quantity: clampedQty,
+          subtotal: clampedQty * item.product.price,
+        };
+      }),
+    );
   }
 
   removeFromCart(productId: string): void {
@@ -421,11 +552,11 @@ export class PosService {
   }
 
   /**
-   * Registra una venta transaccional en Supabase y descuenta inventario (montos en centavos)
+   * Registra una venta con todos sus detalles (incluyendo fecha y hora) y descuenta el inventario
    */
   async registerSale(
-    paymentMethod: PaymentMethod,
-    amountReceivedCents: number,
+    paymentMethod: PaymentMethod = 'cash',
+    amountReceivedCents?: number,
     options?: { discountCents?: number; customerId?: string | null; notes?: string | null },
   ): Promise<Sale> {
     await this.supabaseService.ensureInitialized();
@@ -435,11 +566,29 @@ export class PosService {
       throw new Error('El carrito está vacío');
     }
 
+    // Verificar existencia actual antes de procesar la venta
+    for (const item of items) {
+      const latestProduct = this.products().find((p) => p.id === item.product.id) ?? item.product;
+      if (latestProduct.stock < item.quantity) {
+        throw new Error(
+          `Existencia insuficiente para "${item.product.name}" (Disponible: ${latestProduct.stock}).`,
+        );
+      }
+    }
+
     const discount = options?.discountCents ?? 0;
     const subtotal = this.cartSubtotal();
     const tax = this.cartTax();
     const total = Math.max(0, subtotal + tax - discount);
-    const changeAmount = Math.max(0, amountReceivedCents - total);
+    const received = amountReceivedCents ?? total;
+    if (received < 0) {
+      throw new Error('No se permiten montos negativos.');
+    }
+    if (received < total) {
+      throw new Error('El monto recibido no puede ser menor al total a pagar.');
+    }
+    const changeAmount = Math.max(0, received - total);
+    const createdAtIso = new Date().toISOString();
 
     const payload: CreateSalePayload = {
       paymentMethod,
@@ -447,7 +596,7 @@ export class PosService {
       tax,
       discount,
       total,
-      amountReceived: amountReceivedCents,
+      amountReceived: received,
       changeAmount,
       customerId: options?.customerId ?? null,
       notes: options?.notes ?? null,
@@ -458,6 +607,61 @@ export class PosService {
         unit_price: item.product.price,
       })),
     };
+
+    if (!this.isConfigured) {
+      const localSales = this.readLocalSales();
+      const nextTicket = localSales.length + 1;
+      const saleId =
+        typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `sale-${Date.now()}`;
+
+      const newSale: StoredSaleWithItems = {
+        id: saleId,
+        ticket_number: nextTicket,
+        customer_id: payload.customerId ?? null,
+        user_id: null,
+        subtotal: payload.subtotal,
+        tax: payload.tax,
+        discount: payload.discount,
+        total: payload.total,
+        payment_method: payload.paymentMethod,
+        amount_received: payload.amountReceived,
+        change_amount: payload.changeAmount,
+        status: 'completed',
+        notes: payload.notes ?? null,
+        created_at: createdAtIso,
+        items: payload.items.map((i) => ({
+          sale_id: saleId,
+          product_id: i.product_id,
+          product_name: i.product_name,
+          quantity: i.quantity,
+          unit_price: i.unit_price,
+          subtotal: i.quantity * i.unit_price,
+        })),
+      };
+
+      const updatedSales = [newSale, ...localSales];
+      this.writeLocalSales(updatedSales);
+      this.sales.set(updatedSales);
+
+      this.products.update((prev) => {
+        const next = prev.map((prod) => {
+          const soldItem = items.find((i) => i.product.id === prod.id);
+          if (!soldItem) return prod;
+          return {
+            ...prod,
+            stock: Math.max(0, prod.stock - soldItem.quantity),
+            updated_at: createdAtIso,
+          };
+        });
+        this.writeLocalProducts(next);
+        return next;
+      });
+
+      this.clearCart();
+      return newSale;
+    }
 
     const { data, error } = await this.supabaseService.client.rpc('create_pos_sale', {
       p_payment_method: payload.paymentMethod,
@@ -472,10 +676,61 @@ export class PosService {
       p_notes: payload.notes,
     });
 
-    if (error) throw error;
+    if (!error && data) {
+      this.clearCart();
+      await Promise.all([this.loadProducts(), this.loadSales()]);
+      return data as Sale;
+    }
+
+    // Respaldo directo en tablas si la función RPC aún no fue creada en Supabase
+    const { data: insertedSale, error: saleError } = await this.supabaseService.client
+      .from('sales')
+      .insert({
+        customer_id: payload.customerId,
+        subtotal: payload.subtotal,
+        tax: payload.tax,
+        discount: payload.discount,
+        total: payload.total,
+        payment_method: payload.paymentMethod,
+        amount_received: payload.amountReceived,
+        change_amount: payload.changeAmount,
+        status: 'completed',
+        notes: payload.notes,
+        created_at: createdAtIso,
+      })
+      .select('*')
+      .single();
+
+    if (saleError) throw saleError;
+    const saleRecord = insertedSale as Sale;
+
+    const saleItemsRows = payload.items.map((i) => ({
+      sale_id: saleRecord.id,
+      product_id: i.product_id,
+      product_name: i.product_name,
+      quantity: i.quantity,
+      unit_price: i.unit_price,
+      subtotal: i.quantity * i.unit_price,
+      created_at: createdAtIso,
+    }));
+
+    const { error: itemsError } = await this.supabaseService.client
+      .from('sale_items')
+      .insert(saleItemsRows);
+
+    if (itemsError) throw itemsError;
+
+    for (const item of items) {
+      const nextStock = Math.max(0, item.product.stock - item.quantity);
+      const { error: stockErr } = await this.supabaseService.client
+        .from('products')
+        .update({ stock: nextStock })
+        .eq('id', item.product.id);
+      if (stockErr) throw stockErr;
+    }
 
     this.clearCart();
-    await this.loadProducts();
-    return data as Sale;
+    await Promise.all([this.loadProducts(), this.loadSales()]);
+    return saleRecord;
   }
 }

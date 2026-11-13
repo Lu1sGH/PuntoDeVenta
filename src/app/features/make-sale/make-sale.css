@@ -1,0 +1,5 @@
+/* Producto agotado en rojo con señalización */
+.search-result-item.out-of-stock {
+  background-color: #fee2e2;
+  color: #7f1d1d;
+}

@@ -1,10 +1,14 @@
-<section class="settings-center-page">
-  <div class="center-box">
+<section class="max-w-xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+  <div class="bg-white border border-slate-200 rounded-2xl p-8 sm:p-10 shadow-xs flex flex-col items-center justify-center gap-5 text-center">
     @if (feedbackMessage(); as msg) {
       <div
-        class="feedback-banner"
-        [class.success]="msg.type === 'success'"
-        [class.error]="msg.type === 'error'"
+        class="w-full px-4 py-3 rounded-xl text-sm font-medium border"
+        [class.bg-emerald-50]="msg.type === 'success'"
+        [class.text-emerald-800]="msg.type === 'success'"
+        [class.border-emerald-200]="msg.type === 'success'"
+        [class.bg-red-50]="msg.type === 'error'"
+        [class.text-red-800]="msg.type === 'error'"
+        [class.border-red-200]="msg.type === 'error'"
         role="status"
       >
         {{ msg.text }}
@@ -13,7 +17,7 @@
 
     <button
       type="button"
-      class="btn-delete-db"
+      class="btn-delete-db px-7 py-3.5 rounded-xl bg-red-600 text-white text-base font-bold shadow-lg shadow-red-600/25 hover:bg-red-700 active:scale-[0.99] transition cursor-pointer"
       (click)="openConfirmModal()"
     >
       Eliminar base de datos
@@ -21,19 +25,24 @@
   </div>
 
   @if (showConfirmModal()) {
-    <div class="modal-backdrop" (click)="closeConfirmModal()">
+    <div
+      class="modal-backdrop fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4"
+      (click)="closeConfirmModal()"
+    >
       <div
-        class="modal-dialog"
+        class="modal-dialog w-full max-w-md bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-delete-db-title"
         (click)="$event.stopPropagation()"
       >
-        <header class="modal-header">
-          <h2 id="confirm-delete-db-title">Confirmar eliminación</h2>
+        <header class="flex items-center justify-between px-5 py-4 border-b border-slate-200 bg-slate-50/70">
+          <h2 id="confirm-delete-db-title" class="text-base sm:text-lg font-bold text-slate-900">
+            Confirmar eliminación
+          </h2>
           <button
             type="button"
-            class="btn-close-x"
+            class="btn-close-x inline-flex items-center justify-center w-9 h-9 rounded-lg border border-slate-200 bg-white text-slate-700 text-xl leading-none hover:bg-slate-100 disabled:opacity-50 transition cursor-pointer"
             aria-label="Cerrar"
             [disabled]="deleting()"
             (click)="closeConfirmModal()"
@@ -42,10 +51,10 @@
           </button>
         </header>
 
-        <form class="modal-body" (ngSubmit)="confirmDeleteDatabase()" novalidate>
-          <p class="confirm-instructions">
+        <form class="p-5 flex flex-col gap-4" (ngSubmit)="confirmDeleteDatabase()" novalidate>
+          <p class="text-sm text-slate-600 leading-relaxed">
             Esta acción eliminará todos los registros de la base de datos. Para confirmar, escribe
-            <strong>converse</strong> a continuación:
+            <strong class="text-red-600 font-bold">converse</strong> a continuación:
           </p>
 
           <input
@@ -54,21 +63,22 @@
             type="text"
             autocomplete="off"
             placeholder="Escribe converse"
+            class="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-600 transition"
             [ngModel]="confirmText()"
             (ngModelChange)="confirmText.set($event)"
           />
 
-          <div class="modal-actions">
+          <div class="flex flex-col sm:flex-row justify-end gap-2.5 pt-2">
             <button
               type="submit"
-              class="btn-confirm-danger"
+              class="btn-confirm-danger px-4 py-2.5 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed transition cursor-pointer"
               [disabled]="!isConfirmValid() || deleting()"
             >
               {{ deleting() ? 'Eliminando...' : 'Confirmar' }}
             </button>
             <button
               type="button"
-              class="btn-cancel"
+              class="btn-cancel px-4 py-2.5 rounded-lg border border-slate-300 bg-white text-slate-700 text-sm font-semibold hover:bg-slate-50 disabled:opacity-50 transition cursor-pointer"
               [disabled]="deleting()"
               (click)="closeConfirmModal()"
             >
